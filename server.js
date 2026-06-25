@@ -1,16 +1,3 @@
-// server.js
-const express = require('express');
-const cors = require('cors');
-const jwt = require('jsonwebtoken');
-const bcrypt = require('bcryptjs');
-const fs = require('fs');
-const path = require('path');
-
-const app = express();
-const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-2026';
-const PORT = process.env.PORT || 5000;
-
-// ============ CORS CONFIGURATION (PRODUCTION READY) ============
 const allowedOrigins = [
     // Local development
     'http://localhost:5000',
@@ -21,11 +8,11 @@ const allowedOrigins = [
     'http://127.0.0.1:3000',
     'http://localhost:8080',
     'http://127.0.0.1:8080',
-    // ⭐ Vercel production URLs (আপনার Vercel URL বসান)
-    'https://portfolio-frontend.vercel.app',
+    // ⭐ Vercel production URLs (আপনার URL বসান)
+    'https://portfolio-frontend-xi-one.vercel.app', // ← আপনার URL
     'https://portfolio-frontend-git-main.vercel.app',
     // ⭐ Render production URL
-    'https://portfolio-backend.onrender.com'
+    'https://portfolio-backend-drs2.onrender.com'
 ];
 
 app.use(cors({
