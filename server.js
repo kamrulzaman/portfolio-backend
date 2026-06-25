@@ -1,3 +1,16 @@
+// server.js
+const express = require('express');
+const cors = require('cors');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
+const fs = require('fs');
+const path = require('path');
+
+const app = express();
+const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-key-2026';
+const PORT = process.env.PORT || 5000;
+
+// ============ CORS CONFIGURATION ============
 const allowedOrigins = [
     // Local development
     'http://localhost:5000',
@@ -8,28 +21,25 @@ const allowedOrigins = [
     'http://127.0.0.1:3000',
     'http://localhost:8080',
     'http://127.0.0.1:8080',
-    // ⭐ Vercel production URLs (আপনার URL বসান)
-    'https://portfolio-frontend-xi-one.vercel.app', // ← আপনার URL
+    // Vercel production URLs
+    'https://portfolio-frontend-xi-one.vercel.app',
     'https://portfolio-frontend-git-main.vercel.app',
-    // ⭐ Render production URL
+    // Render production URL
     'https://portfolio-backend-drs2.onrender.com'
 ];
 
 app.use(cors({
     origin: function (origin, callback) {
-        // Allow requests with no origin (like mobile apps or curl requests)
         if (!origin) {
             console.log('CORS: No origin, allowing');
             return callback(null, true);
         }
         
-        // Development mode - সব Origin অনুমোদিত
         if (process.env.NODE_ENV === 'development') {
             console.log('CORS: Development mode, allowing all origins');
             return callback(null, true);
         }
         
-        // Production mode - শুধু allowedOrigins অনুমোদিত
         if (allowedOrigins.indexOf(origin) !== -1) {
             console.log('CORS: Allowed origin:', origin);
             callback(null, true);
@@ -42,31 +52,14 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
     allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'X-Requested-With'],
     exposedHeaders: ['Authorization'],
-    maxAge: 86400 // 24 hours
+    maxAge: 86400
 }));
-// OPTIONS (preflight) রিকোয়েস্টের জন্য CORS হেডার পাঠান
-app.options('*', cors());
 
-// ============ OPTIONS PRE-FLIGHT HANDLING ============
 app.options('*', cors());
-
-// ============ MIDDLEWARE ============
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
-// Request logging middleware (শুধু ডেভেলপমেন্টে)
-if (process.env.NODE_ENV !== 'production') {
-    app.use((req, res, next) => {
-        console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
-        if (req.headers.origin) {
-            console.log('Origin:', req.headers.origin);
-        }
-        next();
-    });
-}
-
-// ============ HEALTH CHECK ENDPOINT ============
-// একটি ডেডিকেটেড রুট এন্ডপয়েন্ট যা CORS preflight-এর জন্য সাড়া দেবে
+// ============ HEALTH CHECK ENDPOINTS ============
 app.get('/api', (req, res) => {
     res.json({ 
         message: 'API is working!',
@@ -77,6 +70,7 @@ app.get('/api', (req, res) => {
         }
     });
 });
+
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'OK',
@@ -91,7 +85,6 @@ const getData = () => {
     try {
         const dataPath = path.join(__dirname, 'data.json');
         if (!fs.existsSync(dataPath)) {
-            // Initialize with default structure
             const defaultData = {
                 profile: {
                     name: 'Kamrul Zaman',
@@ -171,14 +164,12 @@ const getUsers = () => {
     try {
         const usersPath = path.join(__dirname, 'users.json');
         if (!fs.existsSync(usersPath)) {
-            // Create default admin user with hashed password
-            // Password: admin123
             const defaultUsers = {
                 users: [
                     {
                         id: 1,
                         username: 'admin',
-                        password: '$2a$10$K7L5X3Y9Z2A8B4C6D0E1F2G3H4I5J6K7L8M9N0O1P2Q3R4S5T6U7V8W9X0Y', // admin123 hashed
+                        password: '$2a$10$K7L5X3Y9Z2A8B4C6D0E1F2G3H4I5J6K7L8M9N0O1P2Q3R4S5T6U7V8W9X0Y',
                         email: 'admin@example.com',
                         role: 'admin',
                         createdAt: new Date().toISOString()
@@ -208,8 +199,6 @@ const writeUsers = (data) => {
 };
 
 // ============ PUBLIC ROUTES ============
-
-// Get public profile
 app.get('/api/public/profile', (req, res) => {
     try {
         const data = getData();
@@ -220,7 +209,6 @@ app.get('/api/public/profile', (req, res) => {
     }
 });
 
-// Get public projects
 app.get('/api/public/projects', (req, res) => {
     try {
         const data = getData();
@@ -232,8 +220,6 @@ app.get('/api/public/projects', (req, res) => {
 });
 
 // ============ AUTH ROUTES ============
-
-// User registration
 app.post('/api/auth/register', async (req, res) => {
     try {
         const { username, password, email } = req.body;
@@ -254,7 +240,6 @@ app.post('/api/auth/register', async (req, res) => {
         
         const usersData = getUsers();
         
-        // Check if user exists
         if (usersData.users.find(user => user.username === username)) {
             return res.status(400).json({ 
                 success: false,
@@ -262,10 +247,8 @@ app.post('/api/auth/register', async (req, res) => {
             });
         }
         
-        // Hash password
         const hashedPassword = await bcrypt.hash(password, 10);
         
-        // Create new user
         const newUser = {
             id: usersData.users.length + 1,
             username,
@@ -278,7 +261,6 @@ app.post('/api/auth/register', async (req, res) => {
         usersData.users.push(newUser);
         writeUsers(usersData);
         
-        // Create token
         const token = jwt.sign(
             { id: newUser.id, username: newUser.username, role: newUser.role },
             JWT_SECRET,
@@ -305,7 +287,6 @@ app.post('/api/auth/register', async (req, res) => {
     }
 });
 
-// User login
 app.post('/api/auth/login', async (req, res) => {
     try {
         const { username, password } = req.body;
@@ -327,7 +308,6 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
         
-        // Check password
         const validPassword = await bcrypt.compare(password, user.password);
         if (!validPassword) {
             return res.status(401).json({ 
@@ -336,7 +316,6 @@ app.post('/api/auth/login', async (req, res) => {
             });
         }
         
-        // Create token
         const token = jwt.sign(
             { id: user.id, username: user.username, role: user.role || 'user' },
             JWT_SECRET,
@@ -395,8 +374,6 @@ const authenticate = (req, res, next) => {
 };
 
 // ============ PROTECTED ROUTES ============
-
-// Get current user
 app.get('/api/auth/me', authenticate, (req, res) => {
     const usersData = getUsers();
     const user = usersData.users.find(u => u.id === req.user.id);
@@ -418,7 +395,6 @@ app.get('/api/auth/me', authenticate, (req, res) => {
     });
 });
 
-// Get profile (admin only)
 app.get('/api/profile', authenticate, (req, res) => {
     try {
         const data = getData();
@@ -429,7 +405,6 @@ app.get('/api/profile', authenticate, (req, res) => {
     }
 });
 
-// Update profile (admin only)
 app.post('/api/profile', authenticate, (req, res) => {
     try {
         const data = getData();
@@ -450,7 +425,6 @@ app.post('/api/profile', authenticate, (req, res) => {
     }
 });
 
-// Get all projects (admin only)
 app.get('/api/projects', authenticate, (req, res) => {
     try {
         const data = getData();
@@ -461,7 +435,6 @@ app.get('/api/projects', authenticate, (req, res) => {
     }
 });
 
-// Create project (admin only)
 app.post('/api/projects', authenticate, (req, res) => {
     try {
         const data = getData();
@@ -485,7 +458,6 @@ app.post('/api/projects', authenticate, (req, res) => {
     }
 });
 
-// Update project (admin only)
 app.put('/api/projects/:id', authenticate, (req, res) => {
     try {
         const data = getData();
@@ -511,7 +483,6 @@ app.put('/api/projects/:id', authenticate, (req, res) => {
     }
 });
 
-// Delete project (admin only)
 app.delete('/api/projects/:id', authenticate, (req, res) => {
     try {
         const data = getData();
@@ -542,7 +513,6 @@ app.use((err, req, res, next) => {
     });
 });
 
-// 404 handler
 app.use((req, res) => {
     res.status(404).json({ 
         success: false,
@@ -560,7 +530,6 @@ app.listen(PORT, '0.0.0.0', () => {
     console.log('='.repeat(50));
 });
 
-// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
     console.error('❌ Uncaught Exception:', err);
 });
