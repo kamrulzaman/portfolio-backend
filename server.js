@@ -44,6 +44,8 @@ app.use(cors({
     exposedHeaders: ['Authorization'],
     maxAge: 86400 // 24 hours
 }));
+// OPTIONS (preflight) রিকোয়েস্টের জন্য CORS হেডার পাঠান
+app.options('*', cors());
 
 // ============ OPTIONS PRE-FLIGHT HANDLING ============
 app.options('*', cors());
