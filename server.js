@@ -66,6 +66,17 @@ if (process.env.NODE_ENV !== 'production') {
 }
 
 // ============ HEALTH CHECK ENDPOINT ============
+// একটি ডেডিকেটেড রুট এন্ডপয়েন্ট যা CORS preflight-এর জন্য সাড়া দেবে
+app.get('/api', (req, res) => {
+    res.json({ 
+        message: 'API is working!',
+        endpoints: {
+            health: '/api/health',
+            profile: '/api/public/profile',
+            projects: '/api/public/projects'
+        }
+    });
+});
 app.get('/api/health', (req, res) => {
     res.json({
         status: 'OK',
